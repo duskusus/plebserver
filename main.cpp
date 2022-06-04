@@ -15,6 +15,7 @@
 #include <boost/algorithm/string.hpp>
 #include <fstream>
 #include <vector>
+#include <unordered_map>
 
 #define SIZE 1024
 #define BACKLOG 999
@@ -24,11 +25,14 @@ class Request {
   std::vector<std::string> r;
 
 public:
+  std::string getRoute() {
+    return route;
+  }
   Request(std::string request_text) {
     boost::split(r, request_text, boost::is_any_of("\n"));
     std::string line = r[0];
-    route = line.substr(4, line.find_first_of("H") - 4);
-    std::cout << "Route:" << route << std::endl;
+    route = line.substr(4, line.find_first_of("H") - 5);
+    std::cout << "Route:[" << route << "]" << std::endl;
   }
 };
 class Server {
@@ -37,7 +41,7 @@ class Server {
   int socketFD;
   int port;
   std::string header = "HTTP/1.1 200 OK\r\n\r\n";
-  char * data;
+  std::string data;
   std::string response;
 
 public:
@@ -58,21 +62,28 @@ public:
   void processRequest(const std::string &request) {
     // std::cout << request << std::endl;
     Request r(request);
+    if (r.getRoute() == "/fresh") holdResource("test.html");
+     else if (r.getRoute() == "/speedy") {
+      data = "you got the speedy route";
+    } else if (r.getRoute() == "/dog") {
+      holdResource("dog.jpg");
+    }
+     
     response = header + data;
-    std::cout << response << std::endl;
   }
   void holdResource(std::string file_name) {
-
+    std::cout << "reading " << file_name << " from disk\n";
+    data = "";
     std::ifstream file(file_name, std::ios_base::in);
     file.seekg(0, std::ios::end);
     std::streamsize size = file.tellg();
     std::cout << size << " Size\n";
+    data.resize(size + 1);
     file.seekg(0, std::ios::beg);
     if (!file.read((char *)&data[0], size)) {
       std::cout << "oh no, cant read file!!\n";
       return;
     }
-
     std::cout << "resource " << data << std::endl;
   }
   void start() {
